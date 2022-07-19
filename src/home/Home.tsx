@@ -11,7 +11,7 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 
 const Home = () => {
-  const [results, setResults] = useState<any>([]);
+  const [results, setResults] = useState<any>();
   const [error, setError] = useState<boolean>(false);
   const [currentData, setCurrentData] = useState<FetchedData>();
   const page = useRef<number>(0);
@@ -37,13 +37,7 @@ const Home = () => {
         `https://hn.algolia.com/api/v1/search_by_date?tags=story&page=${page.current}`
       )
       .then((res) => {
-        if (!results.length) {
-          setResults(res.data.hits);
-        } else {
-          setResults((prevRes: FetchedData[]) => {
-            [...prevRes, res.data.hits];
-          });
-        }
+        setResults([...results, ...res.data.hits]);
       })
       .catch((err) => {
         console.log(err);
