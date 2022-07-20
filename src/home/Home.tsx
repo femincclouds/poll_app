@@ -2,84 +2,74 @@ import {
   View,
   Text,
   FlatList,
-  TouchableHighlight,
-  ActivityIndicator,
+  Linking,
   StyleSheet,
-  Pressable,
+  TouchableOpacity,
 } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { useNavigation } from "@react-navigation/native";
 
 const Home = () => {
-  const [results, setResults] = useState<any>();
-  const [error, setError] = useState<boolean>(false);
+  const [results, setResults] = useState<{}[]>([]);
   const [currentData, setCurrentData] = useState<FetchedData>();
-  const page = useRef<number>(0);
+  let page = useRef<number>(1);
 
   useEffect(() => {
-    fetchPosts();
+    handleRequest();
+    setInterval(() => {
+      page.current = page.current + 1;
+      handleRequest();
+    }, 10000);
   }, []);
 
-  useEffect(() => {
-    setInterval(() => {
-      fetchPosts();
-    }, 10 * 1000);
-  }, [page]);
-
-  const updatePage = () => {
-    page.current = page.current + 1;
-  };
-
-  const fetchPosts = async () => {
-    updatePage();
-    await axios
-      .get(
+  const handleRequest = async () => {
+    try {
+      const request = await axios.get(
         `https://hn.algolia.com/api/v1/search_by_date?tags=story&page=${page.current}`
-      )
-      .then((res) => {
-        setResults([...results, ...res.data.hits]);
-      })
-      .catch((err) => {
-        console.log(err);
+      );
+      setResults((pre) => {
+        return [...pre, request.data.hits];
       });
+    } catch (err) {
+      console.log(err);
+    }
   };
 
-  const showRawData = (item: FetchedData) => {
-    setCurrentData(item);
-  };
-
-  const renderSearch = ({ item }: { item: FetchedData; index: number }) => {
+  const showMainList = ({ item }: any) => {
     return (
-      <Pressable onPress={() => showRawData(item)} key={item.objectID}>
-        <View style={styles.listItem}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.author}>{item.author}</Text>
-          <Text style={styles.text}>{item.created_at}</Text>
-          <Text style={styles.text}>{item.url}</Text>
-        </View>
-      </Pressable>
+      <View style={styles.listItem}>
+        <FlatList
+          onEndReached={() => {}}
+          data={item}
+          renderItem={showSingleList}
+        />
+      </View>
+    );
+  };
+
+  const showSingleList = ({ item }: any) => {
+    return (
+      <TouchableOpacity
+        style={styles.listContent}
+        onPress={() => setCurrentData(item)}
+      >
+        <Text style={styles.title}>Title : {item.title}</Text>
+        <Text style={styles.author}>Author : {item.author}</Text>
+        <Text style={styles.text}>CreatedAt : {item.created_at}</Text>
+        <Text
+          style={{ color: "blue" }}
+          onPress={() => Linking.openURL("item.url")}
+        >
+          {item.url}
+        </Text>
+      </TouchableOpacity>
     );
   };
 
   return currentData === undefined ? (
-    <View style={styles.container}>
-      <FlatList
-        data={results}
-        keyExtractor={(item) => item.objectID}
-        renderItem={renderSearch}
-        ItemSeparatorComponent={() => <View style={styles.seperator} />}
-        ListEmptyComponent={() => {
-          return (
-            <>
-              {error ? (
-                <Text style={styles.error}>Something went Wrong !!</Text>
-              ) : (
-                <ActivityIndicator />
-              )}
-            </>
-          );
-        }}
-      />
+    <View>
+      <FlatList data={results} renderItem={showMainList} />
       <View style={styles.page}>
         <Text style={styles.pagination}>{page.current}</Text>
       </View>
@@ -93,7 +83,6 @@ const Home = () => {
     </View>
   );
 };
-
 export default Home;
 
 type FetchedData = {
@@ -150,6 +139,12 @@ const styles = StyleSheet.create({
     fontSize: 40,
     textAlign: "right",
     margin: 10,
+  },
+  listContent: {
+    borderWidth: 1,
+    margin: "2%",
+    padding: 8,
+    borderRadius: 10,
   },
   rawData: {
     flex: 1,
